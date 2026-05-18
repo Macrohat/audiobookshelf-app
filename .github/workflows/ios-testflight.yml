@@ -44,8 +44,13 @@ jobs:
       - name: Checkout fork
         uses: actions/checkout@v4
 
-      - name: Select Xcode 15.4
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+      - name: Select latest Xcode (RealmSwift needs Swift 5.10+/Xcode 16+)
+        run: |
+          xc="$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$xc" ]; then xc="$(ls -d /Applications/Xcode_15*.app | sort -V | tail -1)"; fi
+          echo "selecting $xc"
+          sudo xcode-select -s "$xc"
+          xcodebuild -version
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
