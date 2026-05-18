@@ -33,7 +33,7 @@ concurrency:
 jobs:
   build:
     name: Build + upload to TestFlight
-    runs-on: macos-14
+    runs-on: macos-latest   # need a runner image with Xcode 26+ (iOS 26 SDK is mandatory for TestFlight upload as of 2026)
     timeout-minutes: 60
     env:
       IOS_APP_BUNDLE_ID: co.macrohat.audiobookshelf
@@ -44,13 +44,19 @@ jobs:
       - name: Checkout fork
         uses: actions/checkout@v4
 
-      - name: Select latest Xcode (RealmSwift needs Swift 5.10+/Xcode 16+)
+      - name: Select latest Xcode (must be 26+ for TestFlight upload; 16+ for Realm)
         run: |
-          xc="$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)"
-          if [ -z "$xc" ]; then xc="$(ls -d /Applications/Xcode_15*.app | sort -V | tail -1)"; fi
+          echo "installed Xcodes:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          # Pick the highest-version Xcode available on the runner.
+          # sort -V handles 16.4 < 25 < 26 correctly. Apple requires Xcode
+          # 26+ (iOS 26 SDK) for TestFlight upload as of 2026.
+          xc="$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -v beta | sort -V | tail -1)"
+          if [ -z "$xc" ]; then xc="/Applications/Xcode.app"; fi
           echo "selecting $xc"
           sudo xcode-select -s "$xc"
           xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
