@@ -39,7 +39,25 @@ platform :ios do
     # 1. Ensure cert + profile exist (and are checked into Macrohat/ios-signing)
     signing
 
-    # 2. Compute next build number from App Store Connect so we never collide
+    # 2. Scope signing settings to the App target ONLY (target name is
+    # "Audiobookshelf" — scheme name "App" != target name).
+    # Without target-scoping, PROVISIONING_PROFILE_SPECIFIER in xcargs
+    # leaks to every target in the workspace including Pods (Realm,
+    # Capacitor, Alamofire, etc.) which can't accept provisioning
+    # profiles since they build as static libs. This rewrites the App
+    # target's Release config in-place before archive.
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "App.xcodeproj",
+      targets: ["Audiobookshelf"],
+      build_configurations: ["Release"],
+      team_id: ENV.fetch("APPLE_TEAM_ID"),
+      bundle_identifier: ENV.fetch("IOS_APP_BUNDLE_ID", "co.macrohat.audiobookshelf"),
+      profile_name: "match AppStore #{ENV.fetch('IOS_APP_BUNDLE_ID', 'co.macrohat.audiobookshelf')}",
+      code_sign_identity: "Apple Distribution"
+    )
+
+    # 3. Compute next build number from App Store Connect so we never collide
     next_build = latest_testflight_build_number(
       app_identifier: ENV.fetch("IOS_APP_BUNDLE_ID", "co.macrohat.audiobookshelf"),
       initial_build_number: 100
@@ -49,7 +67,10 @@ platform :ios do
       build_number: next_build.to_s
     )
 
-    # 3. Build with manual signing, team + bundle id overridden via xcargs
+    # 4. Build. xcargs is minimal — signing settings live on the App
+    # target itself (step 2) so xcodebuild doesn't try to apply them to
+    # Pods. -allowProvisioningUpdates lets Xcode talk to ASC if anything
+    # is missing.
     build_app(
       workspace: "App.xcworkspace",
       scheme: "App",
@@ -58,21 +79,7 @@ platform :ios do
       clean: true,
       output_directory: "build",
       output_name: "Audiobookshelf-Macrohat.ipa",
-      # Values containing spaces ("Apple Distribution", "match AppStore <bundle>")
-      # must be SINGLE-QUOTED so the shell-tokenisation that fastlane does
-      # before invoking xcodebuild treats the whole assignment as one arg.
-      # Without quoting, xcodebuild interprets the post-space token as a
-      # build action and dies with "Unknown build action 'Distribution'"
-      # or "<target> requires a provisioning profile" depending on which
-      # assignment is involved.
-      xcargs: [
-        "-allowProvisioningUpdates",
-        "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')}",
-        "PRODUCT_BUNDLE_IDENTIFIER=#{ENV.fetch('IOS_APP_BUNDLE_ID', 'co.macrohat.audiobookshelf')}",
-        "CODE_SIGN_STYLE=Manual",
-        "CODE_SIGN_IDENTITY='Apple Distribution'",
-        "PROVISIONING_PROFILE_SPECIFIER='match AppStore #{ENV.fetch('IOS_APP_BUNDLE_ID', 'co.macrohat.audiobookshelf')}'"
-      ].join(" ")
+      xcargs: "-allowProvisioningUpdates"
     )
 
     # 4. Push to TestFlight; do not wait for processing to keep CI minutes low
