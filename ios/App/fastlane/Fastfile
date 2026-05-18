@@ -58,12 +58,16 @@ platform :ios do
       clean: true,
       output_directory: "build",
       output_name: "Audiobookshelf-Macrohat.ipa",
+      # Note: CODE_SIGN_IDENTITY is intentionally omitted — the space in
+      # "Apple Distribution" breaks shell parsing when xcargs is a space-
+      # joined string ("Unknown build action 'Distribution'"). With manual
+      # signing + match-installed provisioning profile mapping, Xcode
+      # resolves the identity automatically from the embedded cert.
       xcargs: [
         "-allowProvisioningUpdates",
         "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')}",
         "PRODUCT_BUNDLE_IDENTIFIER=#{ENV.fetch('IOS_APP_BUNDLE_ID', 'co.macrohat.audiobookshelf')}",
-        "CODE_SIGN_STYLE=Manual",
-        "CODE_SIGN_IDENTITY=Apple Distribution"
+        "CODE_SIGN_STYLE=Manual"
       ].join(" ")
     )
 
