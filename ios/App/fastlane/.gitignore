@@ -1,0 +1,7 @@
+README.md
+report.xml
+Preview.html
+*.cer
+*.p12
+*.mobileprovision
+build/

@@ -1,0 +1,98 @@
+name: iOS TestFlight (Macrohat)
+
+on:
+  push:
+    branches: [macrohat]
+    paths:
+      - 'ios/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'nuxt.config.js'
+      - 'src/**'
+      - 'static/**'
+      - 'plugins/**'
+      - 'components/**'
+      - 'pages/**'
+      - 'store/**'
+      - 'assets/**'
+      - 'mixins/**'
+      - 'middleware/**'
+      - '.github/workflows/ios-testflight.yml'
+  workflow_dispatch:
+    inputs:
+      changelog:
+        description: 'TestFlight changelog'
+        required: false
+        default: ''
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build + upload to TestFlight
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      IOS_APP_BUNDLE_ID: co.macrohat.audiobookshelf
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 15.4
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: ios/App
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Build web bundle (nuxt generate)
+        run: npm run generate
+
+      - name: Capacitor sync iOS
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        working-directory: ios/App
+        run: bundle exec pod install --repo-update
+
+      - name: Run fastlane beta
+        working-directory: ios/App
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_CONTENT_B64: ${{ secrets.APP_STORE_CONNECT_KEY_CONTENT_B64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          MATCH_GIT_URL: https://github.com/Macrohat/ios-signing.git
+          TESTFLIGHT_CHANGELOG: ${{ github.event.inputs.changelog }}
+          FASTLANE_DISABLE_COLORS: '1'
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+        run: bundle exec fastlane beta
+
+      - name: Upload ipa as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: ios/App/build/*.ipa
+          if-no-files-found: ignore
+          retention-days: 14

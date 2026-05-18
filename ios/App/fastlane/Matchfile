@@ -1,0 +1,5 @@
+git_url        ENV["MATCH_GIT_URL"] || "https://github.com/Macrohat/ios-signing.git"
+storage_mode   "git"
+type           "appstore"
+app_identifier [ENV["IOS_APP_BUNDLE_ID"] || "co.macrohat.audiobookshelf"]
+readonly       false

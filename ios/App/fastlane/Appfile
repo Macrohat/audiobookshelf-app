@@ -1,0 +1,4 @@
+app_identifier ENV["IOS_APP_BUNDLE_ID"] || "co.macrohat.audiobookshelf"
+apple_id       ENV["APPLE_ID"]
+team_id        ENV["APPLE_TEAM_ID"]
+itc_team_id    ENV["ITC_TEAM_ID"]

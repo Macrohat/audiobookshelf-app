@@ -1,6 +1,6 @@
 {
-  "appId": "com.audiobookshelf.app",
-  "appName": "audiobookshelf-app",
+  "appId": "co.macrohat.audiobookshelf",
+  "appName": "audiobookshelf-macrohat",
   "webDir": "dist",
   "plugins": {
     "CapacitorHttp": {
