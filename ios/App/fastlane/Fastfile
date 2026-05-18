@@ -14,6 +14,13 @@ default_platform(:ios)
 
 platform :ios do
   before_all do
+    # On CI: create a temporary keychain so match's certs land somewhere
+    # xcodebuild can use without triggering the login.keychain "allow this
+    # app to access" UI prompt that hangs the runner indefinitely.
+    # Without this, run #6 hung 45+ min inside xcodebuild's signing step
+    # waiting for a user that doesn't exist on a headless GitHub runner.
+    setup_ci if ENV["CI"]
+
     app_store_connect_api_key(
       key_id: ENV.fetch("APP_STORE_CONNECT_KEY_ID"),
       issuer_id: ENV.fetch("APP_STORE_CONNECT_ISSUER_ID"),
